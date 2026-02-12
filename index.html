@@ -3,1998 +3,625 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thyme-ato | Professional Focus Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>MAZE.IO // SYSTEM</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;900&display=swap" rel="stylesheet">
+    
     <style>
+        /* --- CORE VARIABLES & RESET --- */
         :root {
-            --primary: #DC2626;
-            --primary-dark: #991B1B;
-            --primary-light: #FCA5A5;
-            --accent: #16A34A;
-            --accent-dark: #15803D;
-            --bg-dark: #0A0A0A;
-            --bg-card: #141414;
-            --bg-hover: #1F1F1F;
-            --text-primary: #FAFAFA;
-            --text-secondary: #A3A3A3;
-            --border: #262626;
+            --bg: #ffffff;
+            --fg: #000000;
+            --accent: #2c2c2c;
+            --grid-line: #e5e5e5;
+            --p1: #0000ff; /* International Klein Blue */
+            --p2: #ff0000; /* Bright Red */
         }
 
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
+            border-radius: 0 !important; /* STRICT HARD CORNERS */
+            outline: none;
+            user-select: none;
         }
 
         body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
             font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            overflow-x: hidden;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
         }
 
-        /* ========== INTRO ANIMATION ========== */
-        #intro {
-            position: fixed;
-            top: 0;
-            left: 0;
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3 { text-transform: uppercase; letter-spacing: -1px; margin: 0; }
+        h1 { font-weight: 900; font-size: 4rem; line-height: 0.9; }
+        p { font-weight: 300; line-height: 1.5; font-size: 0.9rem; color: #555; }
+        
+        /* --- BUTTONS --- */
+        button {
+            background: var(--fg);
+            color: var(--bg);
+            border: none;
+            padding: 15px 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+            border: 1px solid var(--fg);
+        }
+
+        button:hover {
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        button.secondary {
+            background: transparent;
+            color: var(--fg);
+            border: 1px solid #ccc;
+        }
+
+        input {
+            border: 2px solid var(--fg);
+            padding: 15px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
             width: 100%;
-            height: 100vh;
-            background: linear-gradient(135deg, #000000 0%, #1a0000 100%);
+            margin-bottom: 10px;
+            transition: border 0.3s;
+        }
+
+        input:focus { border-color: var(--p1); }
+
+        /* --- LOADING SCREEN --- */
+        #loader-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: var(--bg);
+            z-index: 9999;
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            z-index: 10000;
-            opacity: 1;
-            transition: opacity 1s ease-out;
+            align-items: center;
         }
 
-        #intro.fade-out {
+        .spiral-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 20px);
+            grid-template-rows: repeat(10, 20px);
+            gap: 2px;
+        }
+
+        .block {
+            width: 100%;
+            height: 100%;
+            background: var(--fg);
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        @keyframes ripple {
+            0% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0); }
+        }
+
+        .animating {
+            animation: ripple 1.8s infinite ease-in-out;
+        }
+
+        .loading-text {
+            margin-top: 40px;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        /* --- MAIN UI LAYOUT --- */
+        #app-container {
+            display: none; /* Hidden until loaded */
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+        }
+
+        /* SIDEBAR */
+        aside {
+            border-right: 1px solid #ddd;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #fafafa;
+        }
+
+        .menu-items { display: flex; flex-direction: column; gap: 10px; margin-top: 40px; }
+
+        #timer-display {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: 900;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            background: #fff;
+        }
+
+        /* MAIN CANVAS AREA */
+        main {
+            position: relative;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        canvas {
+            border: 2px solid var(--fg);
+            box-shadow: 20px 20px 0px rgba(0,0,0,0.05);
+        }
+
+        /* --- POPUPS / MODALS --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             opacity: 0;
             pointer-events: none;
-        }
-
-        .intro-container {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            margin-top: -100px;
-        }
-
-        /* Main tomato body */
-        .tomato-piece {
-            position: absolute;
-            opacity: 0;
-            animation: pieceAssemble 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-        }
-
-        .piece-1 {
-            top: 50%;
-            left: 50%;
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle at 30% 30%, #FF6B6B, #DC2626);
-            border-radius: 60% 40% 70% 50%;
-            transform: translate(-50%, -50%) translate(-300px, -300px) rotate(-180deg);
-            animation-delay: 0.2s;
-        }
-
-        .piece-2 {
-            top: 50%;
-            left: 50%;
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle at 70% 30%, #FF6B6B, #DC2626);
-            border-radius: 40% 60% 50% 70%;
-            transform: translate(-50%, -50%) translate(300px, -300px) rotate(180deg);
-            animation-delay: 0.4s;
-        }
-
-        .piece-3 {
-            top: 50%;
-            left: 50%;
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle at 30% 70%, #FA5252, #E03131);
-            border-radius: 70% 50% 60% 40%;
-            transform: translate(-50%, -50%) translate(-300px, 300px) rotate(90deg);
-            animation-delay: 0.6s;
-        }
-
-        .piece-4 {
-            top: 50%;
-            left: 50%;
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle at 70% 70%, #FA5252, #E03131);
-            border-radius: 50% 70% 40% 60%;
-            transform: translate(-50%, -50%) translate(300px, 300px) rotate(-90deg);
-            animation-delay: 0.8s;
-        }
-
-        @keyframes pieceAssemble {
-            0% {
-                opacity: 0;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 1;
-                transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
-            }
-        }
-
-        .tomato-core {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 220px;
-            height: 200px;
-            background: radial-gradient(ellipse at 40% 35%, #FF7676, #DC2626 50%, #C92A2A);
-            border-radius: 48% 52% 52% 48% / 55% 58% 42% 45%;
-            opacity: 0;
-            animation: coreAppear 1s ease-out 1.2s forwards;
-            box-shadow: 
-                0 0 100px rgba(220, 38, 38, 0.5),
-                inset -25px -30px 60px rgba(0, 0, 0, 0.25),
-                inset 20px 20px 40px rgba(255, 150, 150, 0.3),
-                inset -5px 30px 30px rgba(255, 100, 100, 0.2);
-        }
-
-        .tomato-core::before {
-            content: '';
-            position: absolute;
-            top: 15%;
-            left: 20%;
-            width: 50px;
-            height: 40px;
-            background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.4), transparent 70%);
-            border-radius: 50%;
-            filter: blur(8px);
-        }
-
-        @keyframes coreAppear {
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0);
-            }
-            100% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
-        }
-
-        .tomato-stem {
-            position: absolute;
-            top: calc(50% - 115px);
-            left: calc(50% - 25px);
-            width: 50px;
-            height: 45px;
-            background: linear-gradient(180deg, #51CF66 0%, #37B24D 60%, #2F9E44 100%);
-            clip-path: polygon(45% 0%, 55% 0%, 70% 40%, 100% 100%, 0% 100%, 30% 40%);
-            opacity: 0;
-            animation: stemDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 2.5s forwards;
-            box-shadow: 
-                inset -3px -3px 8px rgba(0, 0, 0, 0.3),
-                inset 2px 2px 6px rgba(255, 255, 255, 0.2);
-        }
-
-        .tomato-stem::before,
-        .tomato-stem::after {
-            content: '';
-            position: absolute;
-            background: linear-gradient(135deg, #40C057, #2F9E44);
-            border-radius: 50% 0% 50% 50%;
-            box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .tomato-stem::before {
-            width: 28px;
-            height: 22px;
-            top: 8px;
-            left: -18px;
-            transform: rotate(-35deg);
-            opacity: 0;
-            animation: leafGrow 0.5s ease-out 2.8s forwards;
-        }
-
-        .tomato-stem::after {
-            width: 28px;
-            height: 22px;
-            top: 8px;
-            right: -18px;
-            transform: rotate(35deg) scaleX(-1);
-            opacity: 0;
-            animation: leafGrow 0.5s ease-out 3s forwards;
-        }
-
-        @keyframes stemDrop {
-            0% {
-                opacity: 0;
-                transform: translateY(-100px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes leafGrow {
-            0% {
-                opacity: 0;
-                transform: rotate(-35deg) scale(0);
-            }
-            100% {
-                opacity: 1;
-                transform: rotate(-35deg) scale(1);
-            }
-        }
-
-        .intro-text {
-            text-align: center;
-            position: absolute;
-            bottom: 100px;
-            width: 100%;
-        }
-
-        .intro-logo-text {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 72px;
-            font-weight: 700;
-            letter-spacing: -2px;
-            background: linear-gradient(135deg, #FFFFFF 0%, #DC2626 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            opacity: 0;
-            animation: logoTextAppear 1s ease-out 3s forwards;
-        }
-
-        .intro-slogan {
-            font-size: 14px;
-            font-weight: 400;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin-top: 15px;
-            opacity: 0;
-            animation: sloganAppear 1s ease-out 3.5s forwards;
-        }
-
-        @keyframes logoTextAppear {
-            0% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes sloganAppear {
-            0% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .loading-bar {
-            width: 300px;
-            height: 2px;
-            background: rgba(255, 255, 255, 0.1);
-            margin: 60px auto 0;
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-            animation: loadingBarAppear 0.5s ease-out 4s forwards;
-        }
-
-        .loading-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
-            animation: loadingProgress 1.5s ease-out 4.2s forwards;
-        }
-
-        @keyframes loadingBarAppear {
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes loadingProgress {
-            to {
-                width: 100%;
-            }
-        }
-
-        /* ========== TOP NAVIGATION BAR ========== */
-        #topNav {
-            display: none;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
-            padding: 0 20px;
-        }
-
-        #topNav.visible {
-            display: block;
-        }
-
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 64px;
-        }
-
-        .nav-logo {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #FFFFFF 0%, var(--primary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            cursor: pointer;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 8px;
-        }
-
-        .nav-link {
-            padding: 10px 20px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .nav-link:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        .nav-link.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* ========== HOME SCREEN ========== */
-        #homeScreen {
-            display: none;
-            opacity: 0;
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-
-        #homeScreen.active {
-            display: block;
-            animation: fadeIn 1s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-            }
-        }
-
-        .home-header {
-            text-align: center;
-            margin-bottom: 80px;
-        }
-
-        .home-logo {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 48px;
-            font-weight: 700;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #FFFFFF 0%, var(--primary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
-
-        .home-slogan {
-            font-size: 12px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-        }
-
-        .nav-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .nav-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 40px 32px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--primary) 0%, transparent 100%);
-            opacity: 0;
             transition: opacity 0.3s ease;
         }
 
-        .nav-card:hover {
-            transform: translateY(-8px);
-            border-color: var(--primary);
-            box-shadow: 0 20px 60px rgba(220, 38, 38, 0.2);
-        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
 
-        .nav-card:hover::before {
-            opacity: 0.05;
-        }
-
-        .nav-card-content {
+        .modal-content {
+            background: #fff;
+            border: 2px solid var(--fg);
+            width: 500px;
+            padding: 40px;
+            box-shadow: 30px 30px 0px var(--fg);
+            transform: translateY(50px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
-            z-index: 1;
         }
 
-        .nav-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            display: block;
-        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
 
-        .nav-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-primary);
-        }
-
-        .nav-description {
-            font-size: 14px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        /* ========== PAGES ========== */
-        .page {
-            display: none;
-            opacity: 0;
-            min-height: 100vh;
-            padding: 40px 20px;
-            padding-top: 104px;
-        }
-
-        .page.active {
-            display: block;
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-
-        .page-content {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* ========== TIMER PAGE ========== */
-        .timer-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .timer-modes {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-bottom: 60px;
-            background: var(--bg-card);
-            padding: 8px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 14px 20px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .mode-btn.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        .tomato-timer-modern {
-            position: relative;
-            width: 400px;
-            height: 400px;
-            margin: 0 auto 60px;
-        }
-
-        .timer-circle-bg {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: var(--bg-card);
-            border: 2px solid var(--border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .timer-circle-bg::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: conic-gradient(
-                from 0deg,
-                var(--primary) 0deg,
-                var(--primary) calc(var(--progress, 0) * 3.6deg),
-                transparent calc(var(--progress, 0) * 3.6deg),
-                transparent 360deg
-            );
-            border-radius: 50%;
-            mask: radial-gradient(circle, transparent 195px, black 197px);
-            -webkit-mask: radial-gradient(circle, transparent 195px, black 197px);
-        }
-
-        .timer-inner-circle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 340px;
-            height: 340px;
-            background: linear-gradient(135deg, #1a0505 0%, #0a0000 100%);
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: inset 0 10px 40px rgba(0, 0, 0, 0.5);
-        }
-
-        .timer-display-modern {
-            font-size: 72px;
-            font-weight: 300;
-            color: var(--text-primary);
-            font-family: 'Space Grotesk', monospace;
-            letter-spacing: -2px;
-            margin-bottom: 8px;
-        }
-
-        .timer-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--text-secondary);
-        }
-
-        .timer-controls {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            margin-bottom: 60px;
-        }
-
-        .control-btn-modern {
-            padding: 18px 48px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .control-btn-modern.primary {
-            background: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .control-btn-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(220, 38, 38, 0.2);
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .stat-card-modern {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 48px;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 8px;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        .stat-label-modern {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-secondary);
-        }
-
-        /* ========== TASKS PAGE ========== */
-        .tasks-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .task-input-modern {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 32px;
-        }
-
-        .task-input-field {
-            flex: 1;
-            padding: 16px 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        .task-input-field:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-
-        .add-task-btn {
-            padding: 16px 32px;
-            background: var(--primary);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .add-task-btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-
-        .task-list-modern {
-            list-style: none;
-        }
-
-        .task-item-modern {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .task-item-modern:hover {
-            border-color: var(--primary);
-            transform: translateX(4px);
-        }
-
-        .task-checkbox-modern {
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            accent-color: var(--primary);
-        }
-
-        .task-text-modern {
-            flex: 1;
-            font-size: 16px;
-            color: var(--text-primary);
-        }
-
-        .task-item-modern.completed .task-text-modern {
-            text-decoration: line-through;
-            color: var(--text-secondary);
-        }
-
-        .delete-task-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 4px 8px;
-        }
-
-        .delete-task-btn:hover {
-            color: var(--primary);
-        }
-
-        /* ========== CALENDAR PAGE ========== */
-        .calendar-container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .calendar-header {
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            background: var(--bg-card);
-            padding: 20px 30px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
+            border-bottom: 2px solid var(--fg);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
         }
 
-        .calendar-title {
-            font-size: 24px;
-            font-weight: 700;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        .calendar-nav {
-            display: flex;
-            gap: 12px;
-        }
-
-        .calendar-nav-btn {
-            padding: 10px 20px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+        .close-btn {
+            background: var(--fg);
+            color: var(--bg);
+            border: none;
+            font-size: 1.5rem;
+            width: 40px; 
+            height: 40px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .calendar-nav-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--primary);
-        }
-
-        .calendar-grid {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 30px;
-        }
-
-        .calendar-weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .calendar-weekday {
-            text-align: center;
-            padding: 12px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
-        }
-
-        .calendar-days {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-        }
-
-        .calendar-day {
-            aspect-ratio: 1;
+            padding: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 12px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
+            transition: 0.2s;
         }
+        .close-btn:hover { transform: scale(1.1); }
 
-        .calendar-day:hover {
-            border-color: var(--primary);
-            transform: scale(1.05);
-        }
-
-        .calendar-day.today {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .calendar-day.has-session::after {
-            content: '';
-            position: absolute;
-            bottom: 6px;
-            width: 6px;
-            height: 6px;
-            background: var(--accent);
-            border-radius: 50%;
-        }
-
-        .calendar-day.other-month {
-            opacity: 0.3;
-        }
-
-        .calendar-day-number {
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .calendar-day-sessions {
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .calendar-legend {
-            display: flex;
-            gap: 24px;
-            justify-content: center;
-            margin-top: 24px;
-            padding: 20px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .legend-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        /* ========== SETTINGS & ANALYTICS ========== */
-        .settings-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .settings-section {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-            margin-bottom: 24px;
-        }
-
-        .settings-section-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            color: var(--text-primary);
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
+        /* --- SETTINGS TOGGLES --- */
         .setting-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border);
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
         }
 
-        .setting-row:last-child {
-            border-bottom: none;
-        }
-
-        .setting-info {
-            flex: 1;
-        }
-
-        .setting-name {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: var(--text-primary);
-        }
-
-        .setting-desc {
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .setting-control {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .setting-input-modern {
-            padding: 10px 16px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 14px;
-            font-weight: 600;
-            width: 100px;
-            text-align: center;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-        }
-
-        .setting-input-modern:focus {
-            border-color: var(--primary);
-        }
-
-        .toggle-modern {
+        .toggle-switch {
+            width: 50px; height: 26px;
+            background: #ddd;
             position: relative;
-            width: 56px;
-            height: 32px;
-        }
-
-        .toggle-input-modern {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider-modern {
-            position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--border);
-            transition: 0.4s;
-            border-radius: 32px;
+            transition: 0.3s;
         }
 
-        .toggle-slider-modern:before {
+        .toggle-switch::after {
+            content: '';
             position: absolute;
-            content: "";
-            height: 24px;
-            width: 24px;
-            left: 4px;
-            bottom: 4px;
-            background-color: var(--bg-dark);
-            transition: 0.4s;
-            border-radius: 50%;
+            top: 3px; left: 3px;
+            width: 20px; height: 20px;
+            background: white;
+            transition: 0.3s;
         }
 
-        .toggle-input-modern:checked + .toggle-slider-modern {
-            background-color: var(--primary);
-        }
+        .toggle-switch.on { background: var(--fg); }
+        .toggle-switch.on::after { left: 27px; }
 
-        .toggle-input-modern:checked + .toggle-slider-modern:before {
-            transform: translateX(24px);
-        }
+        /* --- UTILS --- */
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 1s forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .select-modern {
-            padding: 10px 16px;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 14px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            outline: none;
-            min-width: 150px;
-        }
-
-        .select-modern:focus {
-            border-color: var(--primary);
-        }
-
-        .analytics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            max-width: 1200px;
-            margin: 0 auto 40px;
-        }
-
-        .analytics-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 32px;
-        }
-
-        .analytics-title {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-        }
-
-        .analytics-value {
-            font-size: 56px;
-            font-weight: 700;
-            color: var(--primary);
-            font-family: 'Space Grotesk', sans-serif;
-        }
-
-        /* ========== RESPONSIVE ========== */
-        @media (max-width: 768px) {
-            .intro-logo-text {
-                font-size: 48px;
-            }
-
-            .nav-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .nav-links {
-                flex-wrap: wrap;
-            }
-
-            .nav-link {
-                font-size: 12px;
-                padding: 8px 12px;
-            }
-
-            .tomato-timer-modern {
-                width: 300px;
-                height: 300px;
-            }
-
-            .timer-inner-circle {
-                width: 260px;
-                height: 260px;
-            }
-
-            .timer-display-modern {
-                font-size: 56px;
-            }
-
-            .calendar-days {
-                gap: 4px;
-            }
-
-            .calendar-day {
-                padding: 8px;
-            }
-
-            .calendar-day-number {
-                font-size: 14px;
-            }
-        }
     </style>
 </head>
 <body>
-    <!-- INTRO ANIMATION -->
-    <div id="intro">
-        <div class="intro-container">
-            <div class="tomato-piece piece-1"></div>
-            <div class="tomato-piece piece-2"></div>
-            <div class="tomato-piece piece-3"></div>
-            <div class="tomato-piece piece-4"></div>
-            <div class="tomato-core"></div>
-            <div class="tomato-stem"></div>
-        </div>
-        <div class="intro-text">
-            <div class="intro-logo-text">THYME-ATO</div>
-            <div class="intro-slogan">Precision Focus Management</div>
-            <div class="loading-bar"></div>
+
+    <div id="loader-screen">
+        <div class="spiral-grid" id="grid-container"></div>
+        <div class="loading-text">INITIALIZING SYSTEMS...</div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        
+        <aside>
+            <div>
+                <h1>Maze<br>Duel.</h1>
+                <p>P2P Navigation System</p>
+                <div id="timer-display" class="hidden">00:00.00</div>
+            </div>
+
+            <div id="login-panel">
+                <p style="margin-bottom:5px; font-weight:600; font-size:0.7rem;">CONNECTION TYPE</p>
+                <button onclick="openModal('host-modal')" style="width:100%; margin-bottom:10px;">Host Game</button>
+                <button onclick="openModal('join-modal')" class="secondary" style="width:100%;">Join Game</button>
+            </div>
+
+            <div id="game-status" class="hidden">
+                <div style="margin-bottom:20px; border-left: 4px solid var(--p1); padding-left:10px;">
+                    <small>YOU</small><br>
+                    <strong>PLAYER 1</strong>
+                </div>
+                <div style="margin-bottom:20px; border-left: 4px solid var(--p2); padding-left:10px;">
+                    <small>OPPONENT</small><br>
+                    <strong>PLAYER 2</strong>
+                </div>
+                <div id="turn-indicator" style="font-weight:900; color: #aaa;">RACING...</div>
+            </div>
+
+            <div class="menu-items">
+                <button class="secondary" onclick="openModal('settings-modal')">System Settings</button>
+                <button class="secondary" onclick="openModal('help-modal')">Manual</button>
+            </div>
+        </aside>
+
+        <main>
+            <div id="empty-state">
+                <h2 style="color:#ddd;">WAITING FOR INPUT</h2>
+            </div>
+            <canvas id="gameCanvas" class="hidden"></canvas>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-btn" onclick="closeAllModals()">×</button>
+            </div>
+            <div class="setting-row"><span>Invert Colors</span><div class="toggle-switch" onclick="toggleSetting(this)"></div></div>
+            <div class="setting-row"><span>Show Grid Lines</span><div class="toggle-switch on" onclick="toggleSetting(this)"></div></div>
+            <div class="setting-row"><span>High Contrast Mode</span><div class="toggle-switch" onclick="toggleSetting(this)"></div></div>
+            <div class="setting-row"><span>Disable Animations</span><div class="toggle-switch" onclick="toggleSetting(this)"></div></div>
+            <div class="setting-row"><span>Debug Telemetry</span><div class="toggle-switch on" onclick="toggleSetting(this)"></div></div>
+            <div style="margin-top:20px; text-align:right;"><button onclick="closeAllModals()">Save Changes</button></div>
         </div>
     </div>
 
-    <!-- TOP NAVIGATION BAR -->
-    <nav id="topNav">
-        <div class="nav-container">
-            <div class="nav-logo" onclick="navigateTo('home')">THYME-ATO</div>
-            <div class="nav-links">
-                <button class="nav-link" onclick="navigateTo('home')">Home</button>
-                <button class="nav-link" onclick="navigateTo('timer')">Timer</button>
-                <button class="nav-link" onclick="navigateTo('tasks')">Tasks</button>
-                <button class="nav-link" onclick="navigateTo('calendar')">Calendar</button>
-                <button class="nav-link" onclick="navigateTo('analytics')">Analytics</button>
-                <button class="nav-link" onclick="navigateTo('settings')">Settings</button>
+    <div id="help-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manual</h2>
+                <button class="close-btn" onclick="closeAllModals()">×</button>
             </div>
-        </div>
-    </nav>
-
-    <!-- HOME SCREEN -->
-    <div id="homeScreen">
-        <div class="home-header">
-            <div class="home-logo">THYME-ATO</div>
-            <div class="home-slogan">Precision Focus Management</div>
-        </div>
-
-        <div class="nav-grid">
-            <div class="nav-card" onclick="navigateTo('timer')">
-                <div class="nav-card-content">
-                    <span class="nav-icon">⏱️</span>
-                    <div class="nav-title">Focus Timer</div>
-                    <div class="nav-description">Professional Pomodoro technique with advanced time tracking and session management</div>
-                </div>
-            </div>
-
-            <div class="nav-card" onclick="navigateTo('tasks')">
-                <div class="nav-card-content">
-                    <span class="nav-icon">✓</span>
-                    <div class="nav-title">Task Manager</div>
-                    <div class="nav-description">Organize and prioritize your workflow with intelligent task tracking</div>
-                </div>
-            </div>
-
-            <div class="nav-card" onclick="navigateTo('calendar')">
-                <div class="nav-card-content">
-                    <span class="nav-icon">📅</span>
-                    <div class="nav-title">Calendar</div>
-                    <div class="nav-description">Visual overview of your productivity sessions and daily progress</div>
-                </div>
-            </div>
-
-            <div class="nav-card" onclick="navigateTo('analytics')">
-                <div class="nav-card-content">
-                    <span class="nav-icon">📊</span>
-                    <div class="nav-title">Analytics</div>
-                    <div class="nav-description">Comprehensive productivity insights and performance metrics</div>
-                </div>
-            </div>
-
-            <div class="nav-card" onclick="navigateTo('settings')">
-                <div class="nav-card-content">
-                    <span class="nav-icon">⚙️</span>
-                    <div class="nav-title">Settings</div>
-                    <div class="nav-description">Customize your experience with advanced configuration options</div>
-                </div>
-            </div>
+            <p><strong>OBJECTIVE:</strong> Navigate to the center of the grid.</p>
+            <p><strong>CONTROLS:</strong> Use [ARROW KEYS] to move.</p>
+            <p><strong>TIMER:</strong> Race against the clock and opponent.</p>
+            <div style="margin-top:20px; text-align:right;"><button onclick="closeAllModals()">Close</button></div>
         </div>
     </div>
 
-    <!-- TIMER PAGE -->
-    <div id="timerPage" class="page">
-        <div class="page-content">
-            <div class="timer-container">
-                <div class="timer-modes">
-                    <button class="mode-btn active" onclick="setMode('pomodoro')">Focus</button>
-                    <button class="mode-btn" onclick="setMode('shortBreak')">Short Break</button>
-                    <button class="mode-btn" onclick="setMode('longBreak')">Long Break</button>
-                </div>
-
-                <div class="tomato-timer-modern">
-                    <div class="timer-circle-bg" id="timerCircle">
-                        <div class="timer-inner-circle">
-                            <div class="timer-display-modern" id="timerDisplay">25:00</div>
-                            <div class="timer-label" id="timerLabel">FOCUS SESSION</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="timer-controls">
-                    <button class="control-btn-modern primary" id="startBtn" onclick="toggleTimer()">Start</button>
-                    <button class="control-btn-modern" onclick="resetTimer()">Reset</button>
-                </div>
-
-                <div class="stats-row">
-                    <div class="stat-card-modern">
-                        <div class="stat-value" id="sessionCount">0</div>
-                        <div class="stat-label-modern">Sessions</div>
-                    </div>
-                    <div class="stat-card-modern">
-                        <div class="stat-value" id="totalMinutes">0</div>
-                        <div class="stat-label-modern">Minutes</div>
-                    </div>
-                    <div class="stat-card-modern">
-                        <div class="stat-value" id="currentStreak">0</div>
-                        <div class="stat-label-modern">Streak</div>
-                    </div>
-                </div>
+    <div id="host-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Host Session</h2>
+                <button class="close-btn" onclick="closeAllModals()">×</button>
             </div>
+            <p>Send this ID to your opponent:</p>
+            <input type="text" id="my-id-display" readonly value="Generating..." style="background:#f4f4f4; color:#000; font-family:'Courier New'; font-weight:bold;">
+            <p id="host-status">Waiting for peer...</p>
         </div>
     </div>
 
-    <!-- TASKS PAGE -->
-    <div id="tasksPage" class="page">
-        <div class="page-content">
-            <div class="tasks-container">
-                <div class="task-input-modern">
-                    <input type="text" class="task-input-field" id="taskInput" placeholder="Enter a new task...">
-                    <button class="add-task-btn" onclick="addTask()">Add Task</button>
-                </div>
-
-                <ul class="task-list-modern" id="taskList"></ul>
+    <div id="join-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Join Session</h2>
+                <button class="close-btn" onclick="closeAllModals()">×</button>
             </div>
+            <p>Enter Host ID:</p>
+            <input type="text" id="remote-id-input" placeholder="e.g. 5d3a-2f...">
+            <button onclick="connectToHost()" style="width:100%">Connect</button>
         </div>
     </div>
 
-    <!-- CALENDAR PAGE -->
-    <div id="calendarPage" class="page">
-        <div class="page-content">
-            <div class="calendar-container">
-                <div class="calendar-header">
-                    <div class="calendar-title" id="calendarTitle">January 2025</div>
-                    <div class="calendar-nav">
-                        <button class="calendar-nav-btn" onclick="changeMonth(-1)">← Prev</button>
-                        <button class="calendar-nav-btn" onclick="goToToday()">Today</button>
-                        <button class="calendar-nav-btn" onclick="changeMonth(1)">Next →</button>
-                    </div>
-                </div>
+<script>
+    /* --- 1. DYNAMIC LOADING ANIMATION (6 Seconds, 3 Patterns) --- */
+    const gridContainer = document.getElementById('grid-container');
+    const blocks = [];
 
-                <div class="calendar-grid">
-                    <div class="calendar-weekdays">
-                        <div class="calendar-weekday">Sun</div>
-                        <div class="calendar-weekday">Mon</div>
-                        <div class="calendar-weekday">Tue</div>
-                        <div class="calendar-weekday">Wed</div>
-                        <div class="calendar-weekday">Thu</div>
-                        <div class="calendar-weekday">Fri</div>
-                        <div class="calendar-weekday">Sat</div>
-                    </div>
+    // Create 100 blocks
+    for(let i=0; i<100; i++) {
+        let div = document.createElement('div');
+        div.classList.add('block', 'animating');
+        gridContainer.appendChild(div);
+        blocks.push(div);
+    }
 
-                    <div class="calendar-days" id="calendarDays"></div>
-                </div>
-
-                <div class="calendar-legend">
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: var(--primary);"></div>
-                        <span>Today</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: var(--accent);"></div>
-                        <span>Has Sessions</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ANALYTICS PAGE -->
-    <div id="analyticsPage" class="page">
-        <div class="page-content">
-            <div class="analytics-grid">
-                <div class="analytics-card">
-                    <div class="analytics-title">Total Focus Time</div>
-                    <div class="analytics-value" id="analyticsTotal">0<span style="font-size: 24px; color: var(--text-secondary);">h</span></div>
-                </div>
-                <div class="analytics-card">
-                    <div class="analytics-title">Average Session</div>
-                    <div class="analytics-value" id="analyticsAverage">0<span style="font-size: 24px; color: var(--text-secondary);">m</span></div>
-                </div>
-                <div class="analytics-card">
-                    <div class="analytics-title">Completion Rate</div>
-                    <div class="analytics-value" id="analyticsRate">0<span style="font-size: 24px; color: var(--text-secondary);">%</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SETTINGS PAGE -->
-    <div id="settingsPage" class="page">
-        <div class="page-content">
-            <div class="settings-container">
-                <!-- Timer Settings -->
-                <div class="settings-section">
-                    <div class="settings-section-title">Timer Configuration</div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Focus Duration</div>
-                            <div class="setting-desc">Length of focus sessions in minutes</div>
-                        </div>
-                        <div class="setting-control">
-                            <input type="number" class="setting-input-modern" id="pomodoroTime" value="25" min="1" max="120">
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Short Break Duration</div>
-                            <div class="setting-desc">Length of short breaks in minutes</div>
-                        </div>
-                        <div class="setting-control">
-                            <input type="number" class="setting-input-modern" id="shortBreakTime" value="5" min="1" max="30">
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Long Break Duration</div>
-                            <div class="setting-desc">Length of long breaks in minutes</div>
-                        </div>
-                        <div class="setting-control">
-                            <input type="number" class="setting-input-modern" id="longBreakTime" value="15" min="1" max="60">
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Long Break Interval</div>
-                            <div class="setting-desc">Number of sessions before long break</div>
-                        </div>
-                        <div class="setting-control">
-                            <input type="number" class="setting-input-modern" id="longBreakInterval" value="4" min="2" max="10">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Automation Settings -->
-                <div class="settings-section">
-                    <div class="settings-section-title">Automation</div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Auto-start Breaks</div>
-                            <div class="setting-desc">Automatically begin break sessions</div>
-                        </div>
-                        <div class="setting-control">
-                            <label class="toggle-modern">
-                                <input type="checkbox" class="toggle-input-modern" id="autoStartBreaks">
-                                <span class="toggle-slider-modern"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Auto-start Focus</div>
-                            <div class="setting-desc">Automatically begin focus sessions after breaks</div>
-                        </div>
-                        <div class="setting-control">
-                            <label class="toggle-modern">
-                                <input type="checkbox" class="toggle-input-modern" id="autoStartFocus">
-                                <span class="toggle-slider-modern"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Notification Settings -->
-                <div class="settings-section">
-                    <div class="settings-section-title">Notifications</div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Sound Alerts</div>
-                            <div class="setting-desc">Play sound when timer completes</div>
-                        </div>
-                        <div class="setting-control">
-                            <label class="toggle-modern">
-                                <input type="checkbox" class="toggle-input-modern" id="soundAlerts" checked>
-                                <span class="toggle-slider-modern"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Alert Volume</div>
-                            <div class="setting-desc">Notification sound volume level</div>
-                        </div>
-                        <div class="setting-control">
-                            <input type="number" class="setting-input-modern" id="alertVolume" value="70" min="0" max="100">
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Alert Sound</div>
-                            <div class="setting-desc">Choose notification sound type</div>
-                        </div>
-                        <div class="setting-control">
-                            <select class="select-modern" id="alertSound">
-                                <option value="beep">Beep</option>
-                                <option value="chime">Chime</option>
-                                <option value="bell">Bell</option>
-                                <option value="ding">Ding</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Halfway Alert</div>
-                            <div class="setting-desc">Alert at 50% of session time</div>
-                        </div>
-                        <div class="setting-control">
-                            <label class="toggle-modern">
-                                <input type="checkbox" class="toggle-input-modern" id="halfwayAlert">
-                                <span class="toggle-slider-modern"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Display Settings -->
-                <div class="settings-section">
-                    <div class="settings-section-title">Display</div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Show Seconds</div>
-                            <div class="setting-desc">Display seconds in timer</div>
-                        </div>
-                        <div class="setting-control">
-                            <label class="toggle-modern">
-                                <input type="checkbox" class="toggle-input-modern" id="showSeconds" checked>
-                                <span class="toggle-slider-modern"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Accent Color</div>
-                            <div class="setting-desc">Primary color theme</div>
-                        </div>
-                        <div class="setting-control">
-                            <select class="select-modern" id="accentColor">
-                                <option value="#DC2626">Red (Default)</option>
-                                <option value="#EA580C">Orange</option>
-                                <option value="#CA8A04">Yellow</option>
-                                <option value="#16A34A">Green</option>
-                                <option value="#2563EB">Blue</option>
-                                <option value="#9333EA">Purple</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data Settings -->
-                <div class="settings-section">
-                    <div class="settings-section-title">Data Management</div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-name">Reset Statistics</div>
-                            <div class="setting-desc">Clear all session data and statistics</div>
-                        </div>
-                        <div class="setting-control">
-                            <button class="control-btn-modern" onclick="resetStats()" style="padding: 10px 20px; font-size: 14px;">Reset</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // App State
-        let currentPage = 'intro';
-        let timerInterval = null;
-        let timeLeft = 25 * 60;
-        let totalTime = 25 * 60;
-        let isRunning = false;
-        let currentMode = 'pomodoro';
-        let sessionsCompleted = 0;
-        let totalMinutesWorked = 0;
-        let currentStreak = 0;
-        let tasks = [];
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let sessionHistory = {}; // Store sessions by date
-
-        // Initialize
-        setTimeout(() => {
-            document.getElementById('intro').classList.add('fade-out');
-            setTimeout(() => {
-                navigateTo('home');
-            }, 1000);
-        }, 6000);
-
-        // Navigation
-        function navigateTo(page) {
-            // Hide all pages
-            document.querySelectorAll('.page, #homeScreen').forEach(el => {
-                el.classList.remove('active');
-            });
-
-            // Remove active state from all nav links
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-
-            // Show top nav for all pages except home
-            const topNav = document.getElementById('topNav');
-            if (page === 'home') {
-                topNav.classList.remove('visible');
-            } else {
-                topNav.classList.add('visible');
+    function applyPattern(type) {
+        blocks.forEach((block, i) => {
+            block.style.animation = 'none';
+            block.offsetHeight; 
+            block.style.animation = null; 
+            const row = Math.floor(i / 10);
+            const col = i % 10;
+            let delay = 0;
+            if (type === 'spiral') {
+                const dist = Math.sqrt(Math.pow(row-4.5, 2) + Math.pow(col-4.5, 2));
+                delay = dist * 0.1;
+            } else if (type === 'waterfall') {
+                delay = (row + col) * 0.1;
+            } else if (type === 'chaos') {
+                delay = Math.random() * 1.5;
             }
-
-            // Show selected page
-            if (page === 'home') {
-                document.getElementById('homeScreen').classList.add('active');
-            } else if (page === 'timer') {
-                document.getElementById('timerPage').classList.add('active');
-                document.querySelector('.nav-link[onclick*="timer"]').classList.add('active');
-            } else if (page === 'tasks') {
-                document.getElementById('tasksPage').classList.add('active');
-                document.querySelector('.nav-link[onclick*="tasks"]').classList.add('active');
-            } else if (page === 'calendar') {
-                document.getElementById('calendarPage').classList.add('active');
-                document.querySelector('.nav-link[onclick*="calendar"]').classList.add('active');
-                renderCalendar();
-            } else if (page === 'analytics') {
-                document.getElementById('analyticsPage').classList.add('active');
-                document.querySelector('.nav-link[onclick*="analytics"]').classList.add('active');
-                updateAnalytics();
-            } else if (page === 'settings') {
-                document.getElementById('settingsPage').classList.add('active');
-                document.querySelector('.nav-link[onclick*="settings"]').classList.add('active');
-            }
-
-            currentPage = page;
-        }
-
-        // Calendar Functions
-        function renderCalendar() {
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'];
-
-            document.getElementById('calendarTitle').textContent =
-                `${monthNames[currentMonth]} ${currentYear}`;
-
-            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
-
-            const calendarDays = document.getElementById('calendarDays');
-            calendarDays.innerHTML = '';
-
-            const today = new Date();
-            const isCurrentMonth = today.getMonth() === currentMonth && today.getFullYear() === currentYear;
-
-            // Previous month days
-            for (let i = firstDay - 1; i >= 0; i--) {
-                const day = daysInPrevMonth - i;
-                const dayEl = createCalendarDay(day, true, false);
-                calendarDays.appendChild(dayEl);
-            }
-
-            // Current month days
-            for (let day = 1; day <= daysInMonth; day++) {
-                const isToday = isCurrentMonth && day === today.getDate();
-                const dateKey = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                const sessions = sessionHistory[dateKey] || 0;
-
-                const dayEl = createCalendarDay(day, false, isToday, sessions);
-                calendarDays.appendChild(dayEl);
-            }
-
-            // Next month days
-            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
-            const remainingCells = totalCells - (firstDay + daysInMonth);
-            for (let day = 1; day <= remainingCells; day++) {
-                const dayEl = createCalendarDay(day, true, false);
-                calendarDays.appendChild(dayEl);
-            }
-        }
-
-        function createCalendarDay(day, isOtherMonth, isToday, sessions = 0) {
-            const dayEl = document.createElement('div');
-            dayEl.className = 'calendar-day';
-            if (isOtherMonth) dayEl.classList.add('other-month');
-            if (isToday) dayEl.classList.add('today');
-            if (sessions > 0) dayEl.classList.add('has-session');
-
-            dayEl.innerHTML = `
-                <div class="calendar-day-number">${day}</div>
-                ${sessions > 0 ? `<div class="calendar-day-sessions">${sessions} 🍅</div>` : ''}
-            `;
-
-            return dayEl;
-        }
-
-        function changeMonth(delta) {
-            currentMonth += delta;
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            } else if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
-            renderCalendar();
-        }
-
-        function goToToday() {
-            const today = new Date();
-            currentMonth = today.getMonth();
-            currentYear = today.getFullYear();
-            renderCalendar();
-        }
-
-        // Timer Functions
-        function setMode(mode) {
-            if (isRunning) {
-                pauseTimer();
-            }
-
-            currentMode = mode;
-
-            // Update active button
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            event?.target?.classList.add('active');
-
-            // Set time based on mode
-            const times = {
-                'pomodoro': parseInt(document.getElementById('pomodoroTime').value) * 60,
-                'shortBreak': parseInt(document.getElementById('shortBreakTime').value) * 60,
-                'longBreak': parseInt(document.getElementById('longBreakTime').value) * 60
-            };
-
-            totalTime = times[mode];
-            timeLeft = totalTime;
-
-            // Update label
-            const labels = {
-                'pomodoro': 'FOCUS SESSION',
-                'shortBreak': 'SHORT BREAK',
-                'longBreak': 'LONG BREAK'
-            };
-            document.getElementById('timerLabel').textContent = labels[mode];
-
-            updateDisplay();
-            updateProgress();
-        }
-
-        function toggleTimer() {
-            if (isRunning) {
-                pauseTimer();
-            } else {
-                startTimer();
-            }
-        }
-
-        function startTimer() {
-            isRunning = true;
-            document.getElementById('startBtn').textContent = 'Pause';
-
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateDisplay();
-                updateProgress();
-
-                // Halfway alert
-                if (document.getElementById('halfwayAlert')?.checked && timeLeft === Math.floor(totalTime / 2)) {
-                    playSound();
-                }
-
-                if (timeLeft <= 0) {
-                    timerComplete();
-                }
-            }, 1000);
-        }
-
-        function pauseTimer() {
-            isRunning = false;
-            document.getElementById('startBtn').textContent = 'Start';
-            clearInterval(timerInterval);
-        }
-
-        function resetTimer() {
-            pauseTimer();
-            timeLeft = totalTime;
-            updateDisplay();
-            updateProgress();
-        }
-
-        function timerComplete() {
-            pauseTimer();
-
-            if (currentMode === 'pomodoro') {
-                sessionsCompleted++;
-                totalMinutesWorked += Math.floor(totalTime / 60);
-                currentStreak++;
-
-                // Record session in history
-                const today = new Date();
-                const dateKey = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-                sessionHistory[dateKey] = (sessionHistory[dateKey] || 0) + 1;
-
-                document.getElementById('sessionCount').textContent = sessionsCompleted;
-                document.getElementById('totalMinutes').textContent = totalMinutesWorked;
-                document.getElementById('currentStreak').textContent = currentStreak;
-
-                // Auto-start break
-                const longBreakInterval = parseInt(document.getElementById('longBreakInterval').value);
-                const nextMode = (sessionsCompleted % longBreakInterval === 0) ? 'longBreak' : 'shortBreak';
-
-                if (document.getElementById('autoStartBreaks')?.checked) {
-                    setTimeout(() => {
-                        setMode(nextMode);
-                        startTimer();
-                    }, 2000);
-                } else {
-                    setMode(nextMode);
-                }
-            } else {
-                // Auto-start focus
-                if (document.getElementById('autoStartFocus')?.checked) {
-                    setTimeout(() => {
-                        setMode('pomodoro');
-                        startTimer();
-                    }, 2000);
-                } else {
-                    setMode('pomodoro');
-                }
-            }
-
-            playSound();
-        }
-
-        function updateDisplay() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-
-            const showSeconds = document.getElementById('showSeconds')?.checked ?? true;
-
-            if (showSeconds) {
-                document.getElementById('timerDisplay').textContent =
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                document.getElementById('timerDisplay').textContent = minutes.toString();
-            }
-        }
-
-        function updateProgress() {
-            const progress = ((totalTime - timeLeft) / totalTime) * 100;
-            document.getElementById('timerCircle').style.setProperty('--progress', progress);
-        }
-
-        function playSound() {
-            if (!document.getElementById('soundAlerts')?.checked) return;
-
-            const volume = (parseInt(document.getElementById('alertVolume')?.value) || 70) / 100;
-            const soundType = document.getElementById('alertSound')?.value || 'beep';
-
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            const frequencies = {
-                'beep': 800,
-                'chime': 1200,
-                'bell': 1000,
-                'ding': 1500
-            };
-
-            oscillator.frequency.value = frequencies[soundType] || 800;
-            oscillator.type = 'sine';
-
-            gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        }
-
-        // Task Functions
-        function addTask() {
-            const input = document.getElementById('taskInput');
-            const text = input.value.trim();
-
-            if (text === '') return;
-
-            const task = {
-                id: Date.now(),
-                text: text,
-                completed: false
-            };
-
-            tasks.push(task);
-            input.value = '';
-            renderTasks();
-        }
-
-        function toggleTask(id) {
-            const task = tasks.find(t => t.id === id);
-            if (task) {
-                task.completed = !task.completed;
-                renderTasks();
-            }
-        }
-
-        function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
-            renderTasks();
-        }
-
-        function renderTasks() {
-            const taskList = document.getElementById('taskList');
-
-            if (tasks.length === 0) {
-                taskList.innerHTML = '<div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">No tasks yet</div>';
-                return;
-            }
-
-            taskList.innerHTML = tasks.map(task => `
-                <li class="task-item-modern ${task.completed ? 'completed' : ''}">
-                    <input type="checkbox" class="task-checkbox-modern"
-                           ${task.completed ? 'checked' : ''}
-                           onchange="toggleTask(${task.id})">
-                    <span class="task-text-modern">${task.text}</span>
-                    <button class="delete-task-btn" onclick="deleteTask(${task.id})">×</button>
-                </li>
-            `).join('');
-        }
-
-        // Analytics Functions
-        function updateAnalytics() {
-            const totalHours = Math.floor(totalMinutesWorked / 60);
-            const avgSession = sessionsCompleted > 0 ? Math.round(totalMinutesWorked / sessionsCompleted) : 0;
-            const completionRate = tasks.length > 0 ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 0;
-
-            document.getElementById('analyticsTotal').innerHTML = `${totalHours}<span style="font-size: 24px; color: var(--text-secondary);">h</span>`;
-            document.getElementById('analyticsAverage').innerHTML = `${avgSession}<span style="font-size: 24px; color: var(--text-secondary);">m</span>`;
-            document.getElementById('analyticsRate').innerHTML = `${completionRate}<span style="font-size: 24px; color: var(--text-secondary);">%</span>`;
-        }
-
-        // Settings Functions
-        function resetStats() {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.8);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10001;
-            `;
-
-            modal.innerHTML = `
-                <div style="
-                    background: var(--bg-card);
-                    border: 1px solid var(--border);
-                    padding: 40px;
-                    border-radius: 16px;
-                    max-width: 400px;
-                    text-align: center;
-                ">
-                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-                    <h3 style="color: var(--text-primary); margin-bottom: 12px; font-size: 20px;">Reset Statistics?</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px;">This will permanently delete all session data and cannot be undone.</p>
-                    <div style="display: flex; gap: 12px; justify-center: center;">
-                        <button onclick="this.closest('div').parentElement.remove()"
-                                style="padding: 12px 24px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; cursor: pointer; font-family: Inter, sans-serif; font-weight: 600;">
-                            Cancel
-                        </button>
-                        <button onclick="confirmReset(this)"
-                                style="padding: 12px 24px; background: var(--primary); border: none; color: white; border-radius: 8px; cursor: pointer; font-family: Inter, sans-serif; font-weight: 600;">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-        }
-
-        function confirmReset(btn) {
-            sessionsCompleted = 0;
-            totalMinutesWorked = 0;
-            currentStreak = 0;
-            tasks = [];
-            sessionHistory = {};
-
-            document.getElementById('sessionCount').textContent = '0';
-            document.getElementById('totalMinutes').textContent = '0';
-            document.getElementById('currentStreak').textContent = '0';
-
-            renderTasks();
-            btn.closest('div').parentElement.remove();
-        }
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('taskInput')?.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') addTask();
-            });
-
-            // Update timer when settings change
-            ['pomodoroTime', 'shortBreakTime', 'longBreakTime'].forEach(id => {
-                document.getElementById(id)?.addEventListener('change', function() {
-                    if (!isRunning) {
-                        setMode(currentMode);
-                    }
-                });
-            });
-
-            // Apply accent color
-            document.getElementById('accentColor')?.addEventListener('change', function(e) {
-                document.documentElement.style.setProperty('--primary', e.target.value);
-            });
+            block.style.animationDelay = `${delay}s`;
         });
-    </script>
+    }
+
+    let patternIndex = 0;
+    const patterns = ['spiral', 'waterfall', 'chaos'];
+    applyPattern(patterns[0]);
+
+    const animInterval = setInterval(() => {
+        patternIndex = (patternIndex + 1) % patterns.length;
+        applyPattern(patterns[patternIndex]);
+    }, 2000);
+
+    setTimeout(() => {
+        clearInterval(animInterval);
+        document.getElementById('loader-screen').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('loader-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('fade-in');
+            document.getElementById('app-container').style.display = 'grid'; 
+        }, 1000);
+    }, 6000); 
+
+    /* --- 2. UI LOGIC --- */
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeAllModals() { document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active')); }
+    function toggleSetting(el) { el.classList.toggle('on'); }
+
+    /* --- 3. TIMER LOGIC --- */
+    let startTime = 0;
+    let timerInterval = null;
+    let myFinished = false;
+    let opFinished = false;
+
+    function startTimer() {
+        startTime = Date.now();
+        document.getElementById('timer-display').classList.remove('hidden');
+        timerInterval = setInterval(() => {
+            if(!myFinished) {
+                const now = Date.now();
+                const diff = now - startTime;
+                const min = Math.floor(diff / 60000);
+                const sec = Math.floor((diff % 60000) / 1000);
+                const ms = Math.floor((diff % 1000) / 10);
+                document.getElementById('timer-display').innerText = 
+                    `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+            }
+        }, 50);
+    }
+
+    function formatTime(msTime) {
+         const diff = msTime;
+         const min = Math.floor(diff / 60000);
+         const sec = Math.floor((diff % 60000) / 1000);
+         const ms = Math.floor((diff % 1000) / 10);
+         return `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}.${ms.toString().padStart(2,'0')}`;
+    }
+
+    /* --- 4. PEERJS & GAME LOGIC --- */
+    const peer = new Peer();
+    let conn = null;
+    let myId = null;
+    let isHost = false;
+
+    const COLS = 31;
+    const ROWS = 31;
+    const CELL = 15;
+    let maze = [];
+    let p1 = {x:1, y:1, color:'var(--p1)'};
+    let p2 = {x:COLS-2, y:ROWS-2, color:'var(--p2)'};
+    let goal = {x: Math.floor(COLS/2), y: Math.floor(ROWS/2)};
+    let gameRunning = false;
+
+    peer.on('open', (id) => {
+        myId = id;
+        document.getElementById('my-id-display').value = id;
+    });
+
+    // --- HOST LOGIC ---
+    peer.on('connection', (c) => {
+        isHost = true;
+        conn = c;
+        conn.on('open', () => {
+            closeAllModals();
+            document.getElementById('login-panel').classList.add('hidden');
+            document.getElementById('game-status').classList.remove('hidden');
+            generateMaze();
+            conn.send({ type: 'INIT', maze: maze, sx: COLS-2, sy: ROWS-2 });
+            startGame(true);
+        });
+        conn.on('data', (d) => processData(d));
+    });
+
+    // --- JOIN LOGIC ---
+    function connectToHost() {
+        isHost = false;
+        let id = document.getElementById('remote-id-input').value;
+        if(!id) return;
+        conn = peer.connect(id);
+        conn.on('open', () => {
+            closeAllModals();
+            document.getElementById('login-panel').classList.add('hidden');
+            document.getElementById('game-status').classList.remove('hidden');
+        });
+        conn.on('data', (d) => processData(d));
+    }
+
+    // Shared Data Handler
+    function processData(data) {
+        if(data.type === 'INIT') {
+            maze = data.maze;
+            p1.x = 1; p1.y = 1;
+            p2.x = data.sx; p2.y = data.sy;
+            startGame(false);
+        } else if (data.type === 'MOVE') {
+            if(isHost) { p2.x = data.x; p2.y = data.y; }
+            else { p1.x = data.x; p1.y = data.y; }
+            draw();
+        } else if (data.type === 'WIN') {
+            // OPPONENT FINISHED
+            opFinished = true;
+            // Don't stop gameRunning, allow self to continue
+            const timeStr = formatTime(data.time);
+            alert(`OPPONENT FINISHED: ${timeStr}`);
+            // Update UI status
+            const statusEl = document.getElementById('turn-indicator');
+            statusEl.innerText = `OPPONENT FINISHED [${timeStr}]. KEEP GOING!`;
+            statusEl.style.color = "var(--p2)";
+        }
+    }
+
+    /* --- GAME ENGINE --- */
+    function startGame(amIHost) {
+        document.getElementById('empty-state').classList.add('hidden');
+        document.getElementById('gameCanvas').classList.remove('hidden');
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = COLS * CELL;
+        canvas.height = ROWS * CELL;
+        
+        gameRunning = true;
+        myFinished = false;
+        opFinished = false;
+        startTimer();
+        draw();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(!gameRunning || myFinished) return; // Only block if I am finished
+        
+        let me = isHost ? p1 : p2;
+        let tx = me.x; 
+        let ty = me.y;
+
+        if(e.key === 'ArrowUp') ty--;
+        if(e.key === 'ArrowDown') ty++;
+        if(e.key === 'ArrowLeft') tx--;
+        if(e.key === 'ArrowRight') tx++;
+
+        if(maze[ty][tx] === 0) {
+            me.x = tx; me.y = ty;
+            conn.send({ type: 'MOVE', x: tx, y: ty });
+            draw();
+            
+            if(me.x === goal.x && me.y === goal.y) {
+                myFinished = true;
+                const endTime = Date.now() - startTime;
+                conn.send({ type: 'WIN', time: endTime });
+                alert(`MISSION ACCOMPLISHED: ${formatTime(endTime)}`);
+                // Stop timer visually
+                clearInterval(timerInterval);
+                document.getElementById('timer-display').innerText = formatTime(endTime);
+                document.getElementById('turn-indicator').innerText = "FINISHED.";
+            }
+        }
+    });
+
+    function draw() {
+        const ctx = document.getElementById('gameCanvas').getContext('2d');
+        ctx.fillStyle = "white";
+        ctx.fillRect(0,0, 1000, 1000);
+
+        // Walls
+        for(let y=0; y<ROWS; y++) {
+            for(let x=0; x<COLS; x++) {
+                if(maze[y][x] === 1) {
+                    ctx.fillStyle = "black";
+                    ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+                }
+            }
+        }
+
+        // Goal
+        ctx.fillStyle = "#ccc";
+        ctx.fillRect(goal.x*CELL, goal.y*CELL, CELL, CELL);
+
+        // Players
+        ctx.fillStyle = "#0000ff"; // P1 Blue
+        ctx.fillRect(p1.x*CELL, p1.y*CELL, CELL, CELL);
+        
+        ctx.fillStyle = "#ff0000"; // P2 Red
+        ctx.fillRect(p2.x*CELL, p2.y*CELL, CELL, CELL);
+    }
+
+    // Maze Gen (Recursive Backtracker)
+    function generateMaze() {
+        maze = Array(ROWS).fill().map(() => Array(COLS).fill(1));
+        let stack = [{x:1, y:1}];
+        maze[1][1] = 0;
+
+        while(stack.length) {
+            let cur = stack[stack.length-1];
+            let dirs = [{x:0,y:-2}, {x:0,y:2}, {x:-2,y:0}, {x:2,y:0}].sort(()=>Math.random()-0.5);
+            let found = false;
+            for(let d of dirs) {
+                let nx = cur.x + d.x, ny = cur.y + d.y;
+                if(nx>0 && nx<COLS-1 && ny>0 && ny<ROWS-1 && maze[ny][nx]===1) {
+                    maze[ny][nx] = 0;
+                    maze[cur.y+d.y/2][cur.x+d.x/2] = 0;
+                    stack.push({x:nx, y:ny});
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) stack.pop();
+        }
+        maze[goal.y][goal.x] = 0;
+        maze[ROWS-2][COLS-2] = 0;
+    }
+</script>
 </body>
 </html>
